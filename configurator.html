@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clear Ice Mold Configurator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0d1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
+.hdr{text-align:center;padding:22px 16px 6px}
+.hdr h1{font-size:22px;color:#fff;font-weight:300;letter-spacing:2px}
+.hdr .sub{color:#666;font-size:11px;margin-top:3px}
+
+.config-bar{display:flex;justify-content:center;gap:6px;padding:12px 16px 4px;flex-wrap:wrap}
+.cfg-btn{position:relative;background:#12122a;border:2px solid #252550;border-radius:10px;padding:10px 14px;cursor:pointer;transition:all .25s;min-width:140px;text-align:center}
+.cfg-btn:hover{border-color:#3a6ea5;background:#161638}
+.cfg-btn.active{border-color:#4a9ef5;background:#1a2a4a;box-shadow:0 0 16px rgba(74,158,245,.12)}
+.cfg-btn .nm{font-size:14px;color:#ccc;font-weight:500}.cfg-btn.active .nm{color:#fff}
+.cfg-btn .ds{font-size:9px;color:#666;margin-top:2px}.cfg-btn.active .ds{color:#7ab8f5}
+.cfg-btn .tg{position:absolute;top:-7px;right:8px;background:#2a5a3a;color:#6dca8a;font-size:8px;padding:2px 6px;border-radius:7px}
+
+.main{display:flex;flex-wrap:wrap;max-width:1500px;margin:0 auto;padding:8px 16px;gap:12px}
+.viewer{flex:1 1 620px;background:#080818;border-radius:12px;border:1px solid #1e1e3e;position:relative;overflow:hidden}
+#cv{width:100%;height:520px;display:block;cursor:grab}#cv:active{cursor:grabbing}
+.hint{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:3px 10px;border-radius:12px;font-size:9px;color:#555;pointer-events:none}
+.strip{display:flex;gap:4px;padding:6px 8px;justify-content:center;flex-wrap:wrap}
+.sb{background:#151530;color:#999;border:1px solid #252550;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:11px;transition:all .15s;user-select:none}
+.sb:hover,.sb.on{background:#1e3a5f;color:#fff;border-color:#4a8acc}
+.sb.acc{background:#1a2a1a;color:#6dca8a;border-color:#2a4a2a}.sb.acc.on{background:#2a5a2a;color:#fff;border-color:#4a8a4a}
+
+.side{flex:1 1 310px;display:flex;flex-direction:column;gap:10px;max-height:680px;overflow-y:auto}
+.card{background:#111128;border-radius:10px;border:1px solid #1e1e3e;padding:14px}
+.card h3{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#5a9ed6;margin-bottom:7px}
+.sr{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #151535;font-size:11px}.sr:last-child{border:none}
+.sl{color:#666}.sv{color:#ddd;font-weight:500}
+.note{font-size:11px;color:#666;line-height:1.6}.note strong{color:#999}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:#999}
+.sw{width:9px;height:9px;border-radius:2px}
+.warn{background:#2a2a1a;border:1px solid #4a3a1a;border-radius:6px;padding:8px 10px;margin-top:6px}
+.warn p{font-size:11px;color:#d4a656;line-height:1.5}
+
+.xsec{max-width:1500px;margin:6px auto;padding:0 16px}
+.xc{background:#111128;border-radius:10px;border:1px solid #1e1e3e;padding:14px}
+svg.sc{max-width:100%;height:auto;display:block;margin:0 auto}
+
+.cmp-bar{max-width:1500px;margin:6px auto 30px;padding:0 16px}
+.cmp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:1000px){.cmp-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.cmp-grid{grid-template-columns:1fr}}
+.cm{background:#111128;border:1px solid #1e1e3e;border-radius:10px;padding:12px;transition:border-color .2s}
+.cm.hl{border-color:#4a9ef5;background:#121230}
+.cm h4{font-size:12px;color:#5a9ed6;margin-bottom:5px}
+.pro{color:#6dca8a;font-size:10px;margin:2px 0}.con{color:#d4a656;font-size:10px;margin:2px 0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>CLEAR ICE MOLD CONFIGURATOR</h1>
+  <p class="sub">Compare layouts &bull; Switch views &bull; X-ray internals &bull; All 12 cubes</p>
+</div>
+
+<div class="config-bar">
+  <div class="cfg-btn active" onclick="setConfig('4x3')" id="cfg-4x3">
+    <div class="nm">4×3 Flat</div><div class="ds">Wide &amp; low &bull; 1 chamber</div>
+  </div>
+  <div class="cfg-btn" onclick="setConfig('2x6')" id="cfg-2x6">
+    <div class="nm">2×6 Dual-Stack</div><div class="ds">Narrow &bull; 2 chambers</div>
+    <span class="tg">BALANCED</span>
+  </div>
+  <div class="cfg-btn" onclick="setConfig('1x6split')" id="cfg-1x6split">
+    <div class="nm">1×6 Split Tower</div><div class="ds">Side-by-side trays &bull; 2 chambers</div>
+    <span class="tg">NEW</span>
+  </div>
+  <div class="cfg-btn" onclick="setConfig('1x6gap')" id="cfg-1x6gap">
+    <div class="nm">1×6 Air-Gap Stack</div><div class="ds">Stacked + open channel &bull; 3 chambers</div>
+    <span class="tg">MAX CLARITY</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="viewer">
+    <div id="cv"></div>
+    <div class="strip">
+      <div class="sb on" onclick="setView('persp')" data-v="persp">Perspective</div>
+      <div class="sb" onclick="setView('top')" data-v="top">Top</div>
+      <div class="sb" onclick="setView('front')" data-v="front">Front</div>
+      <div class="sb" onclick="setView('side')" data-v="side">Side</div>
+      <div style="width:1px;background:#252550;margin:0 3px"></div>
+      <div class="sb acc" onclick="toggleExplode()" id="bE">Exploded</div>
+      <div class="sb acc" onclick="toggleXray()" id="bX">X-Ray</div>
+    </div>
+    <div class="hint">Drag to orbit &bull; Scroll to zoom</div>
+  </div>
+  <div class="side" id="sp"></div>
+</div>
+
+<div class="xsec"><div class="xc" id="xs"></div></div>
+<div class="cmp-bar"><div class="cmp-grid" id="cg"></div></div>
+
+<script>
+const C={
+  '4x3':{cols:4,rows:3,label:'4×3 Flat',ch:1,
+    dims:{o:'320 × 240 × 160',cube:'50×50×50',grid:'4×3 (12)',wall:'5',sp:'8',tray:'65',base:'95',fl:'12',settle:'—',tot:'160'},
+    method:'Single-chamber directional freeze. Insulated base forces top-down freezing. Air and impurities collect in one reservoir below the silicone tray.',
+    print:'<strong>Silicone tray:</strong> Print positive mold, cast in food-grade silicone (Shore A 30–40).<br><br><strong>Insulated base:</strong> PETG/ABS, 3mm walls + foam infill. <strong>2 parts.</strong>',
+    physics:'Standard top-down freezing — cold air hits the open top of the tray, insulated base blocks cold from sides and bottom.',
+    pros:['Low profile fits any freezer','Simplest (2 parts)','Fast, even freeze'],
+    cons:['Single reservoir — less filtration','Wide footprint']},
+  '2x6':{cols:2,rows:6,label:'2×6 Dual-Stack',ch:2,
+    dims:{o:'178 × 370 × 210',cube:'50×50×50',grid:'2×6 (12)',wall:'5',sp:'8',tray:'60',base:'110',fl:'12',settle:'35',tot:'210'},
+    method:'Dual-chamber directional freeze. Tray freezes top-down; impurities drain through 4mm holes into a baffled settling chamber, then to the reservoir.',
+    print:'<strong>Silicone tray:</strong> Print positive mold with drain holes.<br><br><strong>Settling chamber:</strong> PETG with baffles.<br><br><strong>Insulated base:</strong> PETG + foam. <strong>3 parts.</strong>',
+    physics:'True top-down freezing. Single tray exposed to cold air. Settling chamber and base are fully insulated — impurities migrate downward naturally.',
+    pros:['Dual-chamber = clearer ice','Narrow footprint','Baffles trap impurities'],
+    cons:['Taller profile (210mm)','3 parts']},
+  '1x6split':{cols:1,rows:6,label:'1×6 Split Tower',ch:2,
+    dims:{o:'178 × 370 × 210',cube:'50×50×50',grid:'2 × (1×6) side-by-side = 12',wall:'5',sp:'8',tray:'55 (each)',base:'120',fl:'12',settle:'35 (each)',tot:'210'},
+    method:'Two independent 1×6 trays sit side-by-side in a shared insulated base, each with its own settling chamber beneath. Both trays are open on top for true top-down freezing. The narrow side-by-side layout keeps the footprint slim while giving each column independent directional freeze.',
+    print:'<strong>2× Silicone trays:</strong> Identical 1×6 positive molds with drain holes.<br><br><strong>Insulated base:</strong> Single PETG shell with center divider wall creating 2 independent settling chambers. <strong>3 parts (2 identical trays + 1 base).</strong>',
+    physics:'<strong>Both trays freeze independently from the top.</strong> No thermal interference between columns. The shared insulated base has a center divider so each column has its own settling zone. This solves the stacking problem — both sets of 6 cubes get true directional freezing.',
+    pros:['Both trays freeze top-down independently','Only 3 parts (2 identical trays!)','Slim profile — same as 2×6','Each column has its own settling chamber'],
+    cons:['Slightly wider than single-column (178mm)','Less settling depth than stacked']},
+  '1x6gap':{cols:1,rows:6,label:'1×6 Air-Gap Stack',ch:3,
+    dims:{o:'110 × 370 × 310',cube:'50×50×50',grid:'1×6 upper + 1×6 lower = 12',wall:'5',sp:'8',tray:'55 (each)',base:'130',fl:'12',settle:'40 + 40',tot:'310'},
+    method:'Vertically stacked 1×6 trays with an <strong>open air channel</strong> between them. The upper tray freezes normally. Between the two trays, a 30mm air gap with side vents allows cold freezer air to circulate and reach the top of tray 2, enabling top-down freezing for both trays. Each tray has a settling chamber below it.',
+    print:'<strong>2× Silicone trays:</strong> Identical 1×6 molds with drain holes.<br><br><strong>Air-gap spacer:</strong> PETG frame with open sides (lattice or vented) — structural only, allows airflow.<br><br><strong>Settling chamber:</strong> PETG with baffles (between tray 2 and base).<br><br><strong>Insulated base:</strong> Deep PETG shell. <strong>5 parts.</strong>',
+    physics:'<strong>Key innovation: open air-gap spacer.</strong> The upper tray freezes top-down normally. The settling chamber below it catches impurities. Below that, a vented spacer frame allows cold air to reach the top surface of tray 2. Tray 2 then also freezes top-down. Its impurities drain into settling chamber 2, then the reservoir. The air gap is critical — without it, tray 2 would freeze from the outside in (bad).',
+    pros:['Slimmest footprint (110mm wide)','Triple filtration = maximum clarity','Both trays get top-down freeze via air gap','Modular — use half for 6 cubes'],
+    cons:['Tallest (310mm) — check clearance','5 parts to print','Longest freeze time','Air gap adds complexity']}
+};
+
+let cur='4x3',exploded=false,xray=false,autoR=true,drag=false,explP=0;
+let sph={t:.7,p:.85,r:26},prev={x:0,y:0};
+
+// THREE setup
+const ctn=document.getElementById('cv');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x080818);
+const cam=new THREE.PerspectiveCamera(36,ctn.clientWidth/520,.1,500);
+const ren=new THREE.WebGLRenderer({antialias:true});
+ren.setSize(ctn.clientWidth,520);ren.setPixelRatio(Math.min(devicePixelRatio,2));
+ctn.appendChild(ren.domElement);
+
+scene.add(new THREE.AmbientLight(0x3a3a5a,.9));
+const d1=new THREE.DirectionalLight(0xffffff,.85);d1.position.set(7,14,8);scene.add(d1);
+scene.add(new THREE.DirectionalLight(0x4488cc,.3).translateX(-5));
+const grd=new THREE.GridHelper(24,24,0x121225,0x121225);scene.add(grd);
+
+function mkMats(){return{
+  base:new THREE.MeshPhongMaterial({color:0x4a4a5a,transparent:true,opacity:.85}),
+  baseIn:new THREE.MeshPhongMaterial({color:0x1a1a2e,transparent:true,opacity:.6}),
+  tray:new THREE.MeshPhongMaterial({color:0x3a7ec8,transparent:true,opacity:.7}),
+  fl:new THREE.MeshPhongMaterial({color:0x4a90d9,transparent:true,opacity:.75}),
+  cav:new THREE.MeshPhongMaterial({color:0x88ccff,transparent:true,opacity:.18}),
+  sett:new THREE.MeshPhongMaterial({color:0x3a8a5a,transparent:true,opacity:.55}),
+  settIn:new THREE.MeshPhongMaterial({color:0x1a3a2a,transparent:true,opacity:.4}),
+  baf:new THREE.MeshPhongMaterial({color:0x4aaa6a,transparent:true,opacity:.6}),
+  rim:new THREE.MeshPhongMaterial({color:0x5a5a6a,transparent:true,opacity:.8}),
+  tray2:new THREE.MeshPhongMaterial({color:0x2a6ab8,transparent:true,opacity:.65}),
+  gap:new THREE.MeshPhongMaterial({color:0x8a6a2a,transparent:true,opacity:.4}),
+  gapW:new THREE.LineBasicMaterial({color:0xaa8833,transparent:true,opacity:.6}),
+  div:new THREE.MeshPhongMaterial({color:0x5a5a6a,transparent:true,opacity:.7}),
+}}
+let M=mkMats();
+let mg=new THREE.Group();scene.add(mg);
+let layers=[];
+
+function clr(){while(mg.children.length)mg.remove(mg.children[0]);layers=[];M=mkMats();}
+function ab(p,w,h,d,m,y,x=0,z=0){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);p.add(o);return o;}
+function ae(p,w,h,d,c,y,x=0,z=0){const g=new THREE.BoxGeometry(w,h,d);const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.4}));e.position.set(x,y,z);p.add(e);}
+
+const CS=2,SP=.32;
+
+function mkTray(cols,rows,gW,gD,tH,yO,tm,fm,cm){
+  const g=new THREE.Group(),tW=gW+1.4,tD=gD+1.4;
+  ab(g,tW,tH,tD,tm,yO+tH/2);
+  ab(g,tW+.9,.16,tD+.9,fm,yO+.08);
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const x=-gW/2+CS/2+c*(CS+SP),z=-gD/2+CS/2+r*(CS+SP);
+    ab(g,CS-.08,CS-.08,CS-.08,cm,yO+tH/2,x,z);
+    ae(g,CS-.08,CS-.08,CS-.08,0x88ccff,yO+tH/2,x,z);
+  }
+  return g;
+}
+function mkSettle(w,d,sH,yO,nb){
+  const g=new THREE.Group();
+  ab(g,w,sH,d,M.sett,yO-sH/2);
+  ab(g,w-.3,sH-.2,d-.3,M.settIn,yO-sH/2);
+  for(let i=0;i<nb;i++){
+    const bz=-d/2+.5+(i+1)*(d-1)/(nb+1);
+    ab(g,w-.5,sH-.25,.08,M.baf,yO-sH/2,i%2===0?.25:-.25,bz);
+  }
+  return g;
+}
+function mkBase(w,d,bH,yO){
+  const g=new THREE.Group();
+  ab(g,w,bH,d,M.base,yO-bH/2);
+  ab(g,w-.35,bH-.3,d-.35,M.baseIn,yO-bH/2+.1);
+  ab(g,w+.2,.12,d+.2,M.rim,yO-.06);
+  return g;
+}
+
+function build(cfg){
+  clr();
+  if(cfg==='4x3') build4x3();
+  else if(cfg==='2x6') build2x6();
+  else if(cfg==='1x6split') build1x6split();
+  else build1x6gap();
+  applyXR();
+}
+
+function build4x3(){
+  const gW=4*CS+3*SP,gD=3*CS+2*SP,tH=2.6;
+  const t=mkTray(4,3,gW,gD,tH,.2,M.tray,M.fl,M.cav);
+  const b=mkBase(gW+2.2,gD+2.2,3.8,-.1);
+  layers=[t,b];layers.forEach(l=>mg.add(l));
+}
+function build2x6(){
+  const gW=2*CS+SP,gD=6*CS+5*SP,tH=2.4,sH=1.4;
+  const t=mkTray(2,6,gW,gD,tH,.2,M.tray,M.fl,M.cav);
+  const s=mkSettle(gW+1.7,gD+1.7,sH,-.1,4);
+  const b=mkBase(gW+2.4,gD+2.4,4.4,-sH-.2);
+  layers=[t,s,b];layers.forEach(l=>mg.add(l));
+}
+function build1x6split(){
+  // Two 1x6 trays side by side, shared base with center divider
+  const gW1=CS,gD=6*CS+5*SP,tH=2.2;
+  const offset=1.5; // horizontal offset for each tray
+  // Left tray
+  const tL=mkTray(1,6,gW1,gD,tH,.2,M.tray,M.fl,M.cav);
+  tL.position.x=-offset;
+  // Right tray
+  const tR=mkTray(1,6,gW1,gD,tH,.2,M.tray2,M.fl,M.cav);
+  tR.position.x=offset;
+  // Shared base with divider
+  const bW=gW1*2+offset*2+1.6,bD=gD+2.2,bH=4.8;
+  const base=mkBase(bW,bD,bH,-.2);
+  // Center divider wall
+  ab(base,.15,bH-.4,bD-.5,M.div,-.2-bH/2+.1);
+  // Settling baffles in each half
+  for(let side of[-1,1]){
+    for(let i=0;i<4;i++){
+      const bz=-gD/2+.8+(i+1)*(gD-1.6)/5;
+      ab(base,(bW/2-.4)*.7,.8,.08,M.baf,-1.2,side*offset,bz);
+    }
+  }
+  layers=[tL,tR,base];layers.forEach(l=>mg.add(l));
+}
+function build1x6gap(){
+  const gW=CS,gD=6*CS+5*SP,tH=2.2,sH=1.4,gapH=1.2;
+  // Upper tray
+  const t1=mkTray(1,6,gW,gD,tH,4,.2,M.tray,M.fl,M.cav);
+  // Settling 1 (below upper tray)
+  const s1=mkSettle(gW+1.6,gD+1.6,sH,3.7,5);
+  // Air-gap spacer (vented frame)
+  const gapGrp=new THREE.Group();
+  const fw=gW+2,fd=gD+2;
+  // Four corner posts
+  for(let sx of[-1,1])for(let sz of[-1,1]){
+    ab(gapGrp,.25,gapH,.25,M.gap,3.7-sH-gapH/2-.1,sx*(fw/2-.15),sz*(fd/2-.15));
+  }
+  // Cross bars top and bottom
+  for(let dy of[-.05,gapH-.05]){
+    ab(gapGrp,fw,.1,.2,M.gap,3.7-sH-dy-.1,0,-fd/2+.1);
+    ab(gapGrp,fw,.1,.2,M.gap,3.7-sH-dy-.1,0,fd/2-.1);
+    ab(gapGrp,.2,.1,fd,M.gap,3.7-sH-dy-.1,-fw/2+.1,0);
+    ab(gapGrp,.2,.1,fd,M.gap,3.7-sH-dy-.1,fw/2-.1,0);
+  }
+  // Wireframe edges to show "open" venting
+  const fg=new THREE.BoxGeometry(fw,gapH,fd);
+  const fe=new THREE.LineSegments(new THREE.EdgesGeometry(fg),M.gapW);
+  fe.position.y=3.7-sH-gapH/2-.1;
+  gapGrp.add(fe);
+
+  // Lower tray
+  const t2yBase=3.7-sH-gapH-.3;
+  const t2=mkTray(1,6,gW,gD,tH,t2yBase,M.tray2,M.fl,M.cav);
+  // Settling 2
+  const s2=mkSettle(gW+1.6,gD+1.6,sH,t2yBase-.2,5);
+  // Deep base
+  const bH=5.2;
+  const base=mkBase(gW+2.4,gD+2.4,bH,t2yBase-sH-.3);
+
+  layers=[t1,s1,gapGrp,t2,s2,base];
+  layers.forEach(l=>mg.add(l));
+}
+
+// Specs
+function updSpecs(){
+  const c=C[cur],d=c.dims;
+  const settR=c.ch>1?`<div class="sr"><span class="sl">Settling Chamber</span><span class="sv">${d.settle}</span></div>`:'';
+  const physWarn=cur==='1x6gap'?`<div class="warn"><p><strong>Air-gap design:</strong> The open-sided spacer frame between trays lets cold freezer air circulate to the top of Tray 2, enabling true top-down directional freezing for both trays. Without this gap, the lower tray would freeze from the outside in — producing cloudy ice.</p></div>`
+    :cur==='1x6split'?`<div class="warn"><p><strong>Side-by-side design:</strong> Both trays sit next to each other with open tops — each gets independent top-down freezing with zero thermal interference. The shared base has a center divider wall creating isolated settling chambers.</p></div>`:'';
+
+  document.getElementById('sp').innerHTML=`
+    <div class="card"><h3>${c.label} — Dimensions (mm)</h3>
+      <div class="sr"><span class="sl">Overall (L×W×H)</span><span class="sv">${d.o}</span></div>
+      <div class="sr"><span class="sl">Cube Size</span><span class="sv">${d.cube}</span></div>
+      <div class="sr"><span class="sl">Layout</span><span class="sv">${d.grid}</span></div>
+      <div class="sr"><span class="sl">Wall / Spacing</span><span class="sv">${d.wall} / ${d.sp} mm</span></div>
+      <div class="sr"><span class="sl">Tray Depth</span><span class="sv">${d.tray} mm</span></div>
+      ${settR}
+      <div class="sr"><span class="sl">Base Depth</span><span class="sv">${d.base} mm</span></div>
+      <div class="sr"><span class="sl">Total Height</span><span class="sv">${d.tot} mm</span></div>
+    </div>
+    <div class="card"><h3>Components</h3>
+      <div class="legend">
+        <div class="li"><div class="sw" style="background:#4a90d9"></div>Silicone Tray</div>
+        ${cur==='1x6split'||cur==='1x6gap'?'<div class="li"><div class="sw" style="background:#2a6ab8"></div>Tray 2</div>':''}
+        ${c.ch>=2?'<div class="li"><div class="sw" style="background:#3a8a5a"></div>Settling Chamber</div>':''}
+        ${cur==='1x6gap'?'<div class="li"><div class="sw" style="background:#aa8833"></div>Air-Gap Spacer</div>':''}
+        <div class="li"><div class="sw" style="background:#5a5a6a"></div>Insulated Base</div>
+        <div class="li"><div class="sw" style="background:#88ccff;opacity:.4"></div>Ice Cavities</div>
+      </div>
+    </div>
+    <div class="card"><h3>Freezing Physics</h3><p class="note">${c.physics}</p>${physWarn}</div>
+    <div class="card"><h3>Clear Ice Method</h3><p class="note">${c.method}</p></div>
+    <div class="card"><h3>Print Notes</h3><p class="note">${c.print}</p></div>`;
+}
+
+// Cross-sections
+function updXS(){
+  const el=document.getElementById('xs');
+  if(cur==='4x3')el.innerHTML=xs4x3();
+  else if(cur==='2x6')el.innerHTML=xs2x6();
+  else if(cur==='1x6split')el.innerHTML=xsSplit();
+  else el.innerHTML=xsGap();
+}
+function xs4x3(){
+  return`<h3>Cross-Section — 4×3 Single Chamber</h3>
+  <svg class="sc" viewBox="0 0 440 220" width="440"><defs><marker id="a1" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#66cc88"/></marker></defs>
+  <rect x="40" y="50" width="340" height="130" rx="4" fill="#2a2a3a" fill-opacity=".5" stroke="#5a5a6a" stroke-width="2"/>
+  <rect x="50" y="55" width="320" height="110" rx="2" fill="#0d0d1a" stroke="#3a3a4a" stroke-width=".8" stroke-dasharray="3,2"/>
+  <rect x="55" y="120" width="310" height="35" rx="1" fill="#1a2a3a" fill-opacity=".3"/>
+  <text x="210" y="142" fill="#4a6a8a" font-size="8" text-anchor="middle">reservoir</text>
+  <rect x="35" y="25" width="350" height="95" rx="5" fill="#1e3a5f" fill-opacity=".4" stroke="#5a9ed6" stroke-width="2"/>
+  <rect x="22" y="25" width="17" height="9" rx="2" fill="#4a90d9" fill-opacity=".6" stroke="#5a9ed6" stroke-width="1"/>
+  <rect x="380" y="25" width="17" height="9" rx="2" fill="#4a90d9" fill-opacity=".6" stroke="#5a9ed6" stroke-width="1"/>
+  <rect x="55" y="35" width="70" height="65" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <rect x="140" y="35" width="70" height="65" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <rect x="225" y="35" width="70" height="65" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <rect x="310" y="35" width="50" height="65" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <text x="210" y="18" fill="#5a9ed6" font-size="10" text-anchor="middle">SILICONE TRAY</text>
+  <text x="210" y="168" fill="#6a6a7a" font-size="9" text-anchor="middle">INSULATED BASE</text>
+  <line x1="90" y1="6" x2="90" y2="30" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a1)"/>
+  <line x1="175" y1="6" x2="175" y2="30" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a1)"/>
+  <line x1="260" y1="6" x2="260" y2="30" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a1)"/>
+  <text x="340" y="12" fill="#66cc88" font-size="8">↓ Freeze direction</text>
+  </svg>`;
+}
+function xs2x6(){
+  return`<h3>Cross-Section — 2×6 Dual Chamber</h3>
+  <svg class="sc" viewBox="0 0 440 340" width="440"><defs><marker id="a2" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#66cc88"/></marker><marker id="a3" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#d4a656"/></marker></defs>
+  <rect x="60" y="25" width="280" height="90" rx="5" fill="#1e3a5f" fill-opacity=".4" stroke="#5a9ed6" stroke-width="2"/>
+  <rect x="45" y="25" width="18" height="9" rx="2" fill="#4a90d9" fill-opacity=".6" stroke="#5a9ed6" stroke-width="1"/>
+  <rect x="337" y="25" width="18" height="9" rx="2" fill="#4a90d9" fill-opacity=".6" stroke="#5a9ed6" stroke-width="1"/>
+  <rect x="85" y="35" width="100" height="65" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <rect x="215" y="35" width="100" height="65" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <text x="200" y="18" fill="#5a9ed6" font-size="10" text-anchor="middle">SILICONE TRAY</text>
+  <rect x="55" y="118" width="290" height="55" rx="4" fill="#1a3a2a" fill-opacity=".5" stroke="#3a7a5a" stroke-width="2"/>
+  <line x1="120" y1="123" x2="120" y2="158" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="200" y1="130" x2="200" y2="168" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="280" y1="123" x2="280" y2="158" stroke="#3a7a5a" stroke-width="1"/>
+  <text x="200" y="138" fill="#5aaa7a" font-size="9" text-anchor="middle">SETTLING CHAMBER</text>
+  <rect x="45" y="178" width="310" height="90" rx="5" fill="#2a2a3a" fill-opacity=".5" stroke="#5a5a6a" stroke-width="2"/>
+  <text x="200" y="210" fill="#6a6a7a" font-size="9" text-anchor="middle">INSULATED BASE</text>
+  <rect x="55" y="240" width="290" height="20" rx="1" fill="#1a2a3a" fill-opacity=".3"/>
+  <text x="200" y="254" fill="#4a6a8a" font-size="7" text-anchor="middle">cloudy ice</text>
+  <line x1="135" y1="6" x2="135" y2="28" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a2)"/>
+  <line x1="265" y1="6" x2="265" y2="28" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a2)"/>
+  <text x="330" y="10" fill="#66cc88" font-size="8">↓ Freeze</text>
+  <line x1="135" y1="100" x2="135" y2="120" stroke="#d4a656" stroke-width="1" marker-end="url(#a3)"/>
+  <line x1="265" y1="100" x2="265" y2="120" stroke="#d4a656" stroke-width="1" marker-end="url(#a3)"/>
+  <text x="340" y="110" fill="#d4a656" font-size="7">impurities ↓</text>
+  <rect x="55" y="288" width="290" height="44" rx="5" fill="#0d0d1a" stroke="#1e1e3e" stroke-width="1"/>
+  <text x="67" y="304" fill="#66cc88" font-size="8">① Freeze top-down → clear ice</text>
+  <text x="67" y="316" fill="#d4a656" font-size="8">② Impurities drain → baffles trap them</text>
+  <text x="67" y="328" fill="#6a6a7a" font-size="8">③ Cloudy ice in bottom reservoir</text>
+  </svg>`;
+}
+function xsSplit(){
+  return`<h3>Cross-Section — 1×6 Split Tower (Side-by-Side)</h3>
+  <svg class="sc" viewBox="0 0 440 340" width="440"><defs><marker id="a4" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#66cc88"/></marker><marker id="a5" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#d4a656"/></marker></defs>
+  <!-- Left tray -->
+  <rect x="40" y="25" width="155" height="80" rx="4" fill="#1e3a5f" fill-opacity=".4" stroke="#5a9ed6" stroke-width="2"/>
+  <rect x="60" y="35" width="115" height="55" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <text x="117" y="65" fill="#aaddff" font-size="9" text-anchor="middle">ICE ×6</text>
+  <text x="117" y="18" fill="#5a9ed6" font-size="9" text-anchor="middle">TRAY 1</text>
+  <!-- Right tray -->
+  <rect x="225" y="25" width="155" height="80" rx="4" fill="#152a4a" fill-opacity=".4" stroke="#3a6ab8" stroke-width="2"/>
+  <rect x="245" y="35" width="115" height="55" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <text x="302" y="65" fill="#aaddff" font-size="9" text-anchor="middle">ICE ×6</text>
+  <text x="302" y="18" fill="#3a6ab8" font-size="9" text-anchor="middle">TRAY 2</text>
+  <!-- Shared base -->
+  <rect x="30" y="110" width="360" height="130" rx="5" fill="#2a2a3a" fill-opacity=".5" stroke="#5a5a6a" stroke-width="2"/>
+  <!-- Center divider -->
+  <line x1="210" y1="115" x2="210" y2="235" stroke="#7a7a8a" stroke-width="3"/>
+  <text x="210" y="142" fill="#8a8a9a" font-size="8" text-anchor="middle">divider wall</text>
+  <!-- Left settling -->
+  <rect x="50" y="150" width="145" height="35" rx="2" fill="#1a3a2a" fill-opacity=".4" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="90" y1="153" x2="90" y2="180" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="140" y1="157" x2="140" y2="182" stroke="#3a7a5a" stroke-width="1"/>
+  <text x="122" y="166" fill="#5aaa7a" font-size="7" text-anchor="middle">settling L</text>
+  <!-- Right settling -->
+  <rect x="225" y="150" width="145" height="35" rx="2" fill="#1a3a2a" fill-opacity=".4" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="265" y1="153" x2="265" y2="180" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="315" y1="157" x2="315" y2="182" stroke="#3a7a5a" stroke-width="1"/>
+  <text x="297" y="166" fill="#5aaa7a" font-size="7" text-anchor="middle">settling R</text>
+  <!-- Reservoirs -->
+  <rect x="50" y="195" width="145" height="18" rx="1" fill="#1a2a3a" fill-opacity=".3"/>
+  <rect x="225" y="195" width="145" height="18" rx="1" fill="#1a2a3a" fill-opacity=".3"/>
+  <text x="210" y="228" fill="#6a6a7a" font-size="9" text-anchor="middle">SHARED INSULATED BASE</text>
+  <!-- Freeze arrows -->
+  <line x1="117" y1="5" x2="117" y2="28" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a4)"/>
+  <line x1="302" y1="5" x2="302" y2="28" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a4)"/>
+  <text x="370" y="10" fill="#66cc88" font-size="8">↓ Freeze</text>
+  <!-- Drain arrows -->
+  <line x1="117" y1="102" x2="117" y2="152" stroke="#d4a656" stroke-width="1" marker-end="url(#a5)"/>
+  <line x1="302" y1="102" x2="302" y2="152" stroke="#d4a656" stroke-width="1" marker-end="url(#a5)"/>
+  <!-- Key insight -->
+  <rect x="40" y="255" width="340" height="70" rx="6" fill="#0d0d1a" stroke="#2a4a2a" stroke-width="1"/>
+  <text x="52" y="272" fill="#5a9ed6" font-size="9" font-weight="600">WHY THIS WORKS</text>
+  <text x="52" y="286" fill="#66cc88" font-size="8">✓ Both trays open on top → true top-down freeze</text>
+  <text x="52" y="299" fill="#66cc88" font-size="8">✓ Center wall isolates each settling zone</text>
+  <text x="52" y="312" fill="#66cc88" font-size="8">✓ Only 3 parts: 2 identical trays + 1 base</text>
+  </svg>`;
+}
+function xsGap(){
+  return`<h3>Cross-Section — 1×6 Air-Gap Stack (Stacked with Vent Channel)</h3>
+  <svg class="sc" viewBox="0 0 360 540" width="360"><defs><marker id="a6" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#66cc88"/></marker><marker id="a7" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#d4a656"/></marker><marker id="a8" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#66aadd"/></marker></defs>
+  <!-- Tray 1 -->
+  <rect x="70" y="20" width="180" height="70" rx="4" fill="#1e3a5f" fill-opacity=".45" stroke="#5a9ed6" stroke-width="2"/>
+  <rect x="55" y="20" width="18" height="8" rx="2" fill="#4a90d9" fill-opacity=".6" stroke="#5a9ed6" stroke-width="1"/>
+  <rect x="247" y="20" width="18" height="8" rx="2" fill="#4a90d9" fill-opacity=".6" stroke="#5a9ed6" stroke-width="1"/>
+  <rect x="95" y="28" width="130" height="50" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <text x="160" y="57" fill="#aaddff" font-size="9" text-anchor="middle">ICE ×6</text>
+  <text x="160" y="14" fill="#5a9ed6" font-size="9" text-anchor="middle">TRAY 1</text>
+  <!-- Settling 1 -->
+  <rect x="65" y="93" width="190" height="40" rx="3" fill="#1a3a2a" fill-opacity=".5" stroke="#3a7a5a" stroke-width="1.5"/>
+  <line x1="110" y1="96" x2="110" y2="126" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="160" y1="100" x2="160" y2="130" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="210" y1="96" x2="210" y2="126" stroke="#3a7a5a" stroke-width="1"/>
+  <text x="160" y="110" fill="#5aaa7a" font-size="8" text-anchor="middle">SETTLING 1</text>
+  <!-- AIR GAP — the key innovation -->
+  <rect x="72" y="138" width="176" height="40" rx="3" fill="none" stroke="#aa8833" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="160" y="155" fill="#cc9933" font-size="10" text-anchor="middle" font-weight="600">AIR GAP</text>
+  <text x="160" y="168" fill="#aa8833" font-size="7" text-anchor="middle">open-sided frame — cold air circulates in</text>
+  <!-- Air flow arrows from sides -->
+  <line x1="50" y1="158" x2="74" y2="158" stroke="#66aadd" stroke-width="1.5" marker-end="url(#a8)"/>
+  <line x1="270" y1="158" x2="246" y2="158" stroke="#66aadd" stroke-width="1.5" marker-end="url(#a8)"/>
+  <text x="30" y="155" fill="#66aadd" font-size="7" text-anchor="end">cold</text>
+  <text x="290" y="155" fill="#66aadd" font-size="7">cold</text>
+  <!-- Tray 2 -->
+  <rect x="70" y="182" width="180" height="70" rx="4" fill="#152a4a" fill-opacity=".45" stroke="#3a6ab8" stroke-width="2"/>
+  <rect x="55" y="182" width="18" height="8" rx="2" fill="#2a6ab8" fill-opacity=".6" stroke="#3a6ab8" stroke-width="1"/>
+  <rect x="247" y="182" width="18" height="8" rx="2" fill="#2a6ab8" fill-opacity=".6" stroke="#3a6ab8" stroke-width="1"/>
+  <rect x="95" y="190" width="130" height="50" rx="2" fill="#88ccff" fill-opacity=".12" stroke="#88ccff" stroke-width="1"/>
+  <text x="160" y="219" fill="#aaddff" font-size="9" text-anchor="middle">ICE ×6</text>
+  <text x="160" y="176" fill="#3a6ab8" font-size="9" text-anchor="middle">TRAY 2</text>
+  <!-- Settling 2 -->
+  <rect x="65" y="256" width="190" height="40" rx="3" fill="#1a3a2a" fill-opacity=".5" stroke="#3a7a5a" stroke-width="1.5"/>
+  <line x1="110" y1="259" x2="110" y2="289" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="160" y1="263" x2="160" y2="293" stroke="#3a7a5a" stroke-width="1"/>
+  <line x1="210" y1="259" x2="210" y2="289" stroke="#3a7a5a" stroke-width="1"/>
+  <text x="160" y="274" fill="#5aaa7a" font-size="8" text-anchor="middle">SETTLING 2</text>
+  <!-- Base -->
+  <rect x="55" y="300" width="210" height="90" rx="5" fill="#2a2a3a" fill-opacity=".55" stroke="#5a5a6a" stroke-width="2"/>
+  <rect x="65" y="310" width="190" height="66" rx="3" fill="#0d0d1a" stroke="#3a3a4a" stroke-width=".8" stroke-dasharray="3,2"/>
+  <rect x="70" y="355" width="180" height="16" rx="1" fill="#1a2a3a" fill-opacity=".3"/>
+  <text x="160" y="366" fill="#4a6a8a" font-size="7" text-anchor="middle">final reservoir</text>
+  <text x="160" y="335" fill="#6a6a7a" font-size="9" text-anchor="middle">INSULATED BASE</text>
+  <!-- Freeze arrows -->
+  <line x1="160" y1="4" x2="160" y2="22" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a6)"/>
+  <text x="220" y="10" fill="#66cc88" font-size="8">↓ Freeze top-down</text>
+  <!-- Flow arrows -->
+  <line x1="160" y1="88" x2="160" y2="95" stroke="#d4a656" stroke-width="1" marker-end="url(#a7)"/>
+  <line x1="160" y1="131" x2="160" y2="140" stroke="#d4a656" stroke-width="1" marker-end="url(#a7)"/>
+  <!-- Freeze arrow to tray 2 -->
+  <line x1="160" y1="170" x2="160" y2="184" stroke="#66cc88" stroke-width="1.5" marker-end="url(#a6)"/>
+  <text x="225" y="180" fill="#66cc88" font-size="7">↓ cold air reaches tray 2</text>
+  <line x1="160" y1="248" x2="160" y2="258" stroke="#d4a656" stroke-width="1" marker-end="url(#a7)"/>
+  <line x1="160" y1="294" x2="160" y2="304" stroke="#d4a656" stroke-width="1" marker-end="url(#a7)"/>
+  <!-- Dims -->
+  <line x1="290" y1="20" x2="290" y2="390" stroke="#888" stroke-width=".5"/>
+  <text x="296" y="210" fill="#aaa" font-size="7" transform="rotate(90,296,210)">310mm</text>
+  <!-- Legend -->
+  <rect x="55" y="408" width="210" height="115" rx="6" fill="#0d0d1a" stroke="#1e1e3e" stroke-width="1"/>
+  <text x="67" y="426" fill="#5a9ed6" font-size="9" font-weight="600">HOW THE AIR GAP WORKS</text>
+  <text x="67" y="442" fill="#66cc88" font-size="7">① Cold air freezes Tray 1 top-down</text>
+  <text x="67" y="455" fill="#d4a656" font-size="7">② Impurities drain into Settling 1</text>
+  <text x="67" y="468" fill="#66aadd" font-size="7">③ Open-frame spacer lets cold air enter from sides</text>
+  <text x="67" y="481" fill="#66cc88" font-size="7">④ Cold air hits top of Tray 2 → freezes top-down</text>
+  <text x="67" y="494" fill="#d4a656" font-size="7">⑤ Impurities drain into Settling 2 → reservoir</text>
+  <text x="67" y="510" fill="#cc9933" font-size="8" font-weight="600">The air gap is what makes stacking work!</text>
+  </svg>`;
+}
+
+// Compare
+function updCmp(){
+  const el=document.getElementById('cg');
+  const ks=Object.keys(C);
+  el.innerHTML=ks.map(k=>{
+    const c=C[k],hl=k===cur?' hl':'';
+    return`<div class="cm${hl}"><h4>${c.label}</h4>
+      <div class="sr"><span class="sl">Size</span><span class="sv">${c.dims.o.split('×').slice(0,2).join('×')}</span></div>
+      <div class="sr"><span class="sl">Height</span><span class="sv">${c.dims.tot}mm</span></div>
+      <div class="sr"><span class="sl">Chambers</span><span class="sv">${c.ch}</span></div>
+      <div style="margin-top:6px">${c.pros.map(p=>`<div class="pro">+ ${p}</div>`).join('')}${c.cons.map(p=>`<div class="con">– ${p}</div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+// Controls
+function setConfig(cfg){
+  cur=cfg;exploded=false;explP=0;document.getElementById('bE').classList.remove('on');
+  document.querySelectorAll('.cfg-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('cfg-'+cfg).classList.add('active');
+  build(cfg);updSpecs();updXS();updCmp();
+  sph.r=cfg==='1x6gap'?32:cfg==='1x6split'?28:cfg==='2x6'?26:24;
+}
+function setView(v){
+  autoR=false;
+  document.querySelectorAll('.sb[data-v]').forEach(b=>b.classList.remove('on'));
+  document.querySelector(`.sb[data-v="${v}"]`)?.classList.add('on');
+  const r=sph.r;
+  switch(v){case 'persp':sph={t:.7,p:.85,r};autoR=true;break;case 'top':sph={t:0,p:.01,r};break;case 'front':sph={t:0,p:Math.PI/2,r};break;case 'side':sph={t:Math.PI/2,p:Math.PI/2,r};break;}
+}
+function toggleExplode(){exploded=!exploded;document.getElementById('bE').classList.toggle('on',exploded);}
+function toggleXray(){xray=!xray;document.getElementById('bX').classList.toggle('on',xray);applyXR();}
+function applyXR(){
+  if(xray){M.base.opacity=.12;M.tray.opacity=.2;M.tray2.opacity=.18;M.sett.opacity=.15;M.fl.opacity=.2;M.rim.opacity=.15;M.cav.opacity=.35;M.baf.opacity=.8;M.baseIn.opacity=.08;M.settIn.opacity=.08;M.gap.opacity=.6;M.div.opacity=.3;}
+  else{M.base.opacity=.85;M.tray.opacity=.7;M.tray2.opacity=.65;M.sett.opacity=.55;M.fl.opacity=.75;M.rim.opacity=.8;M.cav.opacity=.18;M.baf.opacity=.6;M.baseIn.opacity=.6;M.settIn.opacity=.4;M.gap.opacity=.4;M.div.opacity=.7;}
+}
+
+// Orbit
+const cv=ren.domElement;
+cv.addEventListener('mousedown',e=>{drag=true;autoR=false;prev={x:e.clientX,y:e.clientY};});
+cv.addEventListener('mousemove',e=>{if(!drag)return;sph.t-=(e.clientX-prev.x)*.005;sph.p=Math.max(.15,Math.min(2.9,sph.p+(e.clientY-prev.y)*.005));prev={x:e.clientX,y:e.clientY};});
+window.addEventListener('mouseup',()=>drag=false);
+cv.addEventListener('wheel',e=>{sph.r=Math.max(8,Math.min(50,sph.r+e.deltaY*.02));e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{drag=true;autoR=false;prev={x:e.touches[0].clientX,y:e.touches[0].clientY};});
+cv.addEventListener('touchmove',e=>{if(!drag)return;sph.t-=(e.touches[0].clientX-prev.x)*.005;sph.p=Math.max(.15,Math.min(2.9,sph.p+(e.touches[0].clientY-prev.y)*.005));prev={x:e.touches[0].clientX,y:e.touches[0].clientY};e.preventDefault();},{passive:false});
+window.addEventListener('touchend',()=>drag=false);
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(autoR&&!drag)sph.t+=.003;
+  const tgt=exploded?1:0;explP+=(tgt-explP)*.06;
+  const n=layers.length;
+  if(n>0){
+    const sp=cur==='1x6gap'?2.5:cur==='1x6split'?3:3.5;
+    for(let i=0;i<n;i++){
+      const off=(n-1)/2-i;
+      layers[i].position.y+=((explP*off*sp)-layers[i].position.y)*.1;
+      // For split tower, also separate horizontally
+      if(cur==='1x6split'&&n===3){
+        if(i===0)layers[i].position.x+=((-1.5-explP*1.5)-layers[i].position.x)*.1;
+        else if(i===1)layers[i].position.x+=((1.5+explP*1.5)-layers[i].position.x)*.1;
+      }
+    }
+  }
+  const ly=cur==='1x6gap'?0:cur==='1x6split'?-.5:cur==='2x6'?-1:0;
+  cam.position.set(sph.r*Math.sin(sph.p)*Math.sin(sph.t),sph.r*Math.cos(sph.p),sph.r*Math.sin(sph.p)*Math.cos(sph.t));
+  cam.lookAt(0,ly,0);
+  ren.render(scene,cam);
+}
+animate();
+
+window.addEventListener('resize',()=>{const w=ctn.clientWidth;cam.aspect=w/520;cam.updateProjectionMatrix();ren.setSize(w,520);});
+
+// Init
+build('4x3');updSpecs();updXS();updCmp();
+</script>
+</body>
+</html>
