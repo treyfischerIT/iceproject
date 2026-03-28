@@ -1,0 +1,495 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12-Cube Clear Ice Mold Prototype</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow-x: hidden; }
+
+  .header {
+    text-align: center;
+    padding: 30px 20px 10px;
+  }
+  .header h1 { font-size: 28px; color: #fff; font-weight: 300; letter-spacing: 2px; }
+  .header p { color: #888; margin-top: 6px; font-size: 14px; }
+
+  .main-layout {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    gap: 20px;
+  }
+
+  .viewer-panel {
+    flex: 1 1 580px;
+    min-height: 500px;
+    background: #0f0f23;
+    border-radius: 12px;
+    border: 1px solid #2a2a4a;
+    position: relative;
+    overflow: hidden;
+  }
+  #three-canvas { width: 100%; height: 500px; display: block; cursor: grab; }
+  #three-canvas:active { cursor: grabbing; }
+  .viewer-label {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px;
+    font-size: 12px; color: #aaa; pointer-events: none;
+  }
+
+  .controls {
+    display: flex; gap: 8px; padding: 12px; justify-content: center; flex-wrap: wrap;
+  }
+  .controls button {
+    background: #2a2a4a; color: #ccc; border: 1px solid #3a3a5a;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    transition: all 0.2s;
+  }
+  .controls button:hover, .controls button.active { background: #3a6ea5; color: #fff; border-color: #5a9ed6; }
+
+  .info-panel {
+    flex: 1 1 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    background: #16213e;
+    border-radius: 12px;
+    border: 1px solid #2a2a4a;
+    padding: 20px;
+  }
+  .card h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #5a9ed6; margin-bottom: 12px; }
+  .spec-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #1a1a3e; font-size: 14px; }
+  .spec-row:last-child { border: none; }
+  .spec-label { color: #888; }
+  .spec-value { color: #e0e0e0; font-weight: 500; }
+
+  .color-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+  .section-title { font-size: 15px; color: #ccc; margin-bottom: 8px; }
+  .note { font-size: 13px; color: #777; line-height: 1.6; }
+
+  .top-view-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  svg.schematic { max-width: 100%; height: auto; }
+
+  .exploded-toggle {
+    background: #2a2a4a; color: #5a9ed6; border: 1px solid #3a3a5a;
+    padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    transition: all 0.2s; margin: 0 auto; display: block;
+  }
+  .exploded-toggle:hover { background: #3a6ea5; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>12-CUBE CLEAR ICE MOLD</h1>
+  <p>3D-Printable Prototype &mdash; Silicone Mold + Insulated Base</p>
+</div>
+
+<div class="main-layout">
+  <!-- 3D Viewer -->
+  <div class="viewer-panel">
+    <div id="three-canvas"></div>
+    <div class="controls">
+      <button onclick="setView('perspective')" class="active" id="btn-perspective">Perspective</button>
+      <button onclick="setView('top')" id="btn-top">Top</button>
+      <button onclick="setView('front')" id="btn-front">Front</button>
+      <button onclick="setView('side')" id="btn-side">Side</button>
+      <button onclick="toggleExploded()" id="btn-explode">Exploded View</button>
+    </div>
+    <div class="viewer-label">Click &amp; drag to rotate &bull; Scroll to zoom</div>
+  </div>
+
+  <!-- Specs -->
+  <div class="info-panel">
+    <div class="card">
+      <h3>Dimensions (mm)</h3>
+      <div class="spec-row"><span class="spec-label">Overall (L &times; W &times; H)</span><span class="spec-value">320 &times; 240 &times; 160</span></div>
+      <div class="spec-row"><span class="spec-label">Cube Size</span><span class="spec-value">50 &times; 50 &times; 50</span></div>
+      <div class="spec-row"><span class="spec-label">Grid Layout</span><span class="spec-value">4 &times; 3 (12 cubes)</span></div>
+      <div class="spec-row"><span class="spec-label">Wall Thickness</span><span class="spec-value">5 mm</span></div>
+      <div class="spec-row"><span class="spec-label">Cube Spacing</span><span class="spec-value">8 mm</span></div>
+      <div class="spec-row"><span class="spec-label">Silicone Tray Depth</span><span class="spec-value">65 mm</span></div>
+      <div class="spec-row"><span class="spec-label">Insulated Base Depth</span><span class="spec-value">95 mm</span></div>
+      <div class="spec-row"><span class="spec-label">Lip/Flange Width</span><span class="spec-value">12 mm</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Components</h3>
+      <div class="color-legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#4a90d9;"></div> Silicone Mold (top)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#5a5a6a;"></div> Insulated Base</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#88ccff; opacity:0.5;"></div> Ice Cavities</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Clear Ice Method</h3>
+      <p class="note">
+        Directional freezing from top-down. The insulated base slows freezing from sides/bottom,
+        pushing air bubbles and impurities downward. Water freezes clear from the top of each cavity.
+        Excess cloudy ice collects in the reservoir below the silicone tray.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Print &amp; Material Notes</h3>
+      <p class="note">
+        <strong>Silicone tray:</strong> 3D print the positive mold, then cast in food-grade silicone (Shore A 30-40).<br><br>
+        <strong>Insulated base:</strong> Print in PETG or ABS (food-safe). 3mm wall with air gap or fill with foam insulation.
+        The base acts as a cooler to control freeze direction.<br><br>
+        <strong>Tolerances:</strong> Tray should nest into base with ~1mm clearance per side. Flange rests on base rim.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- 2D Schematic -->
+<div style="max-width:1400px; margin:20px auto; padding:0 20px;">
+  <div class="card">
+    <h3>Top-Down Schematic (Silicone Tray)</h3>
+    <div class="top-view-container">
+      <svg class="schematic" viewBox="0 0 400 320" width="400" height="320">
+        <rect x="10" y="10" width="380" height="300" rx="6" fill="none" stroke="#5a9ed6" stroke-width="2"/>
+        <rect x="22" y="22" width="356" height="276" rx="4" fill="none" stroke="#3a6ea5" stroke-width="1" stroke-dasharray="4,3"/>
+        <!-- Row labels -->
+        <text x="5" y="95" fill="#666" font-size="11" text-anchor="end" transform="rotate(-90,5,95)">Row 1</text>
+        <text x="5" y="165" fill="#666" font-size="11" text-anchor="end" transform="rotate(-90,5,165)">Row 2</text>
+        <text x="5" y="235" fill="#666" font-size="11" text-anchor="end" transform="rotate(-90,5,235)">Row 3</text>
+
+        <!-- 4x3 grid of cubes -->
+        <!-- Row 1 -->
+        <rect x="38" y="38" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="122" y="38" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="206" y="38" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="290" y="38" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <!-- Row 2 -->
+        <rect x="38" y="122" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="122" y="122" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="206" y="122" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="290" y="122" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <!-- Row 3 -->
+        <rect x="38" y="206" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="122" y="206" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="206" y="206" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="290" y="206" width="68" height="68" rx="3" fill="#3a6ea5" fill-opacity="0.3" stroke="#5a9ed6" stroke-width="1.5"/>
+
+        <!-- Cube labels -->
+        <text x="72" y="76" fill="#8ab4f8" font-size="10" text-anchor="middle">50mm</text>
+
+        <!-- Dimension lines -->
+        <!-- Overall width -->
+        <line x1="10" y1="5" x2="390" y2="5" stroke="#888" stroke-width="0.5"/>
+        <line x1="10" y1="2" x2="10" y2="8" stroke="#888" stroke-width="0.5"/>
+        <line x1="390" y1="2" x2="390" y2="8" stroke="#888" stroke-width="0.5"/>
+        <text x="200" y="4" fill="#aaa" font-size="9" text-anchor="middle">320mm</text>
+
+        <!-- Overall height -->
+        <line x1="395" y1="10" x2="395" y2="310" stroke="#888" stroke-width="0.5"/>
+        <line x1="392" y1="10" x2="398" y2="10" stroke="#888" stroke-width="0.5"/>
+        <line x1="392" y1="310" x2="398" y2="310" stroke="#888" stroke-width="0.5"/>
+        <text x="398" y="165" fill="#aaa" font-size="9" text-anchor="start" transform="rotate(90,398,165)">240mm</text>
+
+        <!-- Spacing annotation -->
+        <line x1="106" y1="42" x2="122" y2="42" stroke="#ff9966" stroke-width="0.8"/>
+        <text x="114" y="35" fill="#ff9966" font-size="8" text-anchor="middle">8mm</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- Cross-section -->
+<div style="max-width:1400px; margin:20px auto; padding:0 20px 40px;">
+  <div class="card">
+    <h3>Cross-Section View (Side)</h3>
+    <div class="top-view-container">
+      <svg class="schematic" viewBox="0 0 420 220" width="420" height="220">
+        <!-- Base / Insulated container -->
+        <rect x="30" y="60" width="360" height="130" rx="4" fill="#3a3a4a" fill-opacity="0.5" stroke="#6a6a7a" stroke-width="2"/>
+        <text x="210" y="180" fill="#888" font-size="11" text-anchor="middle">Insulated Base (PETG/ABS)</text>
+
+        <!-- Inner cavity of base -->
+        <rect x="40" y="65" width="340" height="110" rx="2" fill="#1a1a2e" stroke="#5a5a6a" stroke-width="1" stroke-dasharray="3,2"/>
+
+        <!-- Water reservoir area -->
+        <rect x="45" y="120" width="330" height="50" rx="1" fill="#1a3a5a" fill-opacity="0.3"/>
+        <text x="210" y="150" fill="#5a8aaa" font-size="9" text-anchor="middle">Water Reservoir (cloudy ice collects here)</text>
+
+        <!-- Silicone tray -->
+        <rect x="25" y="40" width="370" height="85" rx="4" fill="#2a5a9a" fill-opacity="0.4" stroke="#5a9ed6" stroke-width="2"/>
+
+        <!-- Flange -->
+        <rect x="15" y="40" width="15" height="10" rx="2" fill="#4a90d9" fill-opacity="0.6" stroke="#5a9ed6" stroke-width="1.5"/>
+        <rect x="390" y="40" width="15" height="10" rx="2" fill="#4a90d9" fill-opacity="0.6" stroke="#5a9ed6" stroke-width="1.5"/>
+
+        <!-- Ice cube cavities (cross section shows 4 across) -->
+        <rect x="50" y="50" width="55" height="55" rx="2" fill="#88ccff" fill-opacity="0.15" stroke="#88ccff" stroke-width="1"/>
+        <rect x="120" y="50" width="55" height="55" rx="2" fill="#88ccff" fill-opacity="0.15" stroke="#88ccff" stroke-width="1"/>
+        <rect x="190" y="50" width="55" height="55" rx="2" fill="#88ccff" fill-opacity="0.15" stroke="#88ccff" stroke-width="1"/>
+        <rect x="260" y="50" width="55" height="55" rx="2" fill="#88ccff" fill-opacity="0.15" stroke="#88ccff" stroke-width="1"/>
+
+        <!-- Labels -->
+        <text x="77" y="82" fill="#aaddff" font-size="9" text-anchor="middle">50mm</text>
+        <text x="210" y="35" fill="#5a9ed6" font-size="11" text-anchor="middle">Silicone Tray (Shore A 30-40)</text>
+
+        <!-- Dimension: cube height -->
+        <line x1="330" y1="50" x2="330" y2="105" stroke="#ff9966" stroke-width="0.8"/>
+        <line x1="326" y1="50" x2="334" y2="50" stroke="#ff9966" stroke-width="0.8"/>
+        <line x1="326" y1="105" x2="334" y2="105" stroke="#ff9966" stroke-width="0.8"/>
+        <text x="345" y="80" fill="#ff9966" font-size="9">50mm</text>
+
+        <!-- Dimension: total height -->
+        <line x1="410" y1="40" x2="410" y2="190" stroke="#888" stroke-width="0.5"/>
+        <line x1="407" y1="40" x2="413" y2="40" stroke="#888" stroke-width="0.5"/>
+        <line x1="407" y1="190" x2="413" y2="190" stroke="#888" stroke-width="0.5"/>
+        <text x="415" y="120" fill="#aaa" font-size="9" transform="rotate(90,415,120)">160mm</text>
+
+        <!-- Freeze direction arrows -->
+        <defs>
+          <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="#66cc88"/>
+          </marker>
+        </defs>
+        <line x1="77" y1="15" x2="77" y2="45" stroke="#66cc88" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <line x1="147" y1="15" x2="147" y2="45" stroke="#66cc88" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <line x1="217" y1="15" x2="217" y2="45" stroke="#66cc88" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <line x1="287" y1="15" x2="287" y2="45" stroke="#66cc88" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="350" y="20" fill="#66cc88" font-size="9">Freeze direction</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<script>
+// Three.js 3D viewer
+const container = document.getElementById('three-canvas');
+const width = container.clientWidth;
+const height = 500;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f0f23);
+
+const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+camera.position.set(12, 10, 14);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(width, height);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+// Lights
+const ambient = new THREE.AmbientLight(0x404060, 0.8);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+dirLight.position.set(8, 12, 6);
+dirLight.castShadow = true;
+scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0x4488cc, 0.3);
+fillLight.position.set(-5, 3, -5);
+scene.add(fillLight);
+
+// Materials
+const baseMat = new THREE.MeshPhongMaterial({ color: 0x4a4a5a, transparent: true, opacity: 0.9 });
+const baseInnerMat = new THREE.MeshPhongMaterial({ color: 0x2a2a3a, transparent: true, opacity: 0.7 });
+const siliconeMat = new THREE.MeshPhongMaterial({ color: 0x3a7ec8, transparent: true, opacity: 0.75 });
+const cavityMat = new THREE.MeshPhongMaterial({ color: 0x88ccff, transparent: true, opacity: 0.2 });
+const flangeMat = new THREE.MeshPhongMaterial({ color: 0x4a90d9, transparent: true, opacity: 0.8 });
+
+// Groups
+const baseGroup = new THREE.Group();
+const trayGroup = new THREE.Group();
+const cubesGroup = new THREE.Group();
+trayGroup.add(cubesGroup);
+
+// Scale: 1 unit = ~25mm, so 50mm cube = 2 units
+const cubeSize = 2;
+const spacing = 0.32;
+const wallThick = 0.2;
+const cols = 4;
+const rows = 3;
+
+const gridW = cols * cubeSize + (cols - 1) * spacing;
+const gridH = rows * cubeSize + (rows - 1) * spacing;
+
+// === INSULATED BASE ===
+// Outer shell
+const baseW = gridW + 2.4;
+const baseD = gridH + 2.4;
+const baseH = 3.8;
+
+const baseOuterGeo = new THREE.BoxGeometry(baseW, baseH, baseD);
+const baseOuter = new THREE.Mesh(baseOuterGeo, baseMat);
+baseOuter.position.y = -baseH / 2;
+baseGroup.add(baseOuter);
+
+// Inner hollow (visual)
+const innerGeo = new THREE.BoxGeometry(baseW - 0.4, baseH - 0.3, baseD - 0.4);
+const innerMesh = new THREE.Mesh(innerGeo, baseInnerMat);
+innerMesh.position.y = -baseH / 2 + 0.15;
+baseGroup.add(innerMesh);
+
+// Rim detail
+const rimGeo = new THREE.BoxGeometry(baseW + 0.3, 0.15, baseD + 0.3);
+const rimMesh = new THREE.Mesh(rimGeo, baseMat);
+rimMesh.position.y = 0.07;
+baseGroup.add(rimMesh);
+
+scene.add(baseGroup);
+
+// === SILICONE TRAY ===
+const trayW = gridW + 1.6;
+const trayD = gridH + 1.6;
+const trayH = 2.6;
+
+// Tray body
+const trayGeo = new THREE.BoxGeometry(trayW, trayH, trayD);
+const trayMesh = new THREE.Mesh(trayGeo, siliconeMat);
+trayMesh.position.y = trayH / 2 + 0.2;
+trayGroup.add(trayMesh);
+
+// Flange (lip)
+const flangeGeo = new THREE.BoxGeometry(trayW + 1.0, 0.2, trayD + 1.0);
+const flangeMesh = new THREE.Mesh(flangeGeo, flangeMat);
+flangeMesh.position.y = 0.3;
+trayGroup.add(flangeMesh);
+
+// Ice cube cavities
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < cols; c++) {
+    const x = -gridW / 2 + cubeSize / 2 + c * (cubeSize + spacing);
+    const z = -gridH / 2 + cubeSize / 2 + r * (cubeSize + spacing);
+    const y = trayH / 2 + 0.2;
+
+    const cubeGeo = new THREE.BoxGeometry(cubeSize - 0.1, cubeSize - 0.1, cubeSize - 0.1);
+    const cube = new THREE.Mesh(cubeGeo, cavityMat);
+    cube.position.set(x, y, z);
+    cubesGroup.add(cube);
+
+    // Edge wireframe
+    const edges = new THREE.EdgesGeometry(cubeGeo);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.5 }));
+    line.position.set(x, y, z);
+    cubesGroup.add(line);
+  }
+}
+
+scene.add(trayGroup);
+
+// Grid helper
+const gridHelper = new THREE.GridHelper(20, 20, 0x1a1a3e, 0x1a1a3e);
+gridHelper.position.y = -baseH - 0.1;
+scene.add(gridHelper);
+
+// === Orbit controls (manual) ===
+let isDragging = false;
+let prevMouse = { x: 0, y: 0 };
+let spherical = { theta: 0.8, phi: 1.0, radius: 22 };
+let autoRotate = true;
+
+function updateCamera() {
+  camera.position.x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+  camera.position.y = spherical.radius * Math.cos(spherical.phi);
+  camera.position.z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+  camera.lookAt(0, 0, 0);
+}
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; autoRotate = false; prevMouse = { x: e.clientX, y: e.clientY }; });
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  spherical.theta -= dx * 0.005;
+  spherical.phi = Math.max(0.2, Math.min(Math.PI - 0.2, spherical.phi + dy * 0.005));
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('mouseup', () => { isDragging = false; });
+renderer.domElement.addEventListener('wheel', (e) => {
+  spherical.radius = Math.max(8, Math.min(40, spherical.radius + e.deltaY * 0.02));
+  e.preventDefault();
+}, { passive: false });
+
+// Touch support
+renderer.domElement.addEventListener('touchstart', (e) => { isDragging = true; autoRotate = false; prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY }; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!isDragging) return;
+  const dx = e.touches[0].clientX - prevMouse.x;
+  const dy = e.touches[0].clientY - prevMouse.y;
+  spherical.theta -= dx * 0.005;
+  spherical.phi = Math.max(0.2, Math.min(Math.PI - 0.2, spherical.phi + dy * 0.005));
+  prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  e.preventDefault();
+}, { passive: false });
+window.addEventListener('touchend', () => { isDragging = false; });
+
+// View presets
+let currentView = 'perspective';
+function setView(view) {
+  currentView = view;
+  autoRotate = false;
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + view)?.classList.add('active');
+
+  switch(view) {
+    case 'perspective': spherical = { theta: 0.8, phi: 1.0, radius: 22 }; autoRotate = true; break;
+    case 'top': spherical = { theta: 0, phi: 0.01, radius: 20 }; break;
+    case 'front': spherical = { theta: 0, phi: Math.PI / 2, radius: 20 }; break;
+    case 'side': spherical = { theta: Math.PI / 2, phi: Math.PI / 2, radius: 20 }; break;
+  }
+}
+
+// Exploded view
+let exploded = false;
+let explodeProgress = 0;
+function toggleExploded() {
+  exploded = !exploded;
+  document.getElementById('btn-explode').classList.toggle('active', exploded);
+}
+
+// Animate
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (autoRotate && !isDragging) {
+    spherical.theta += 0.003;
+  }
+
+  // Exploded animation
+  const targetExplode = exploded ? 1 : 0;
+  explodeProgress += (targetExplode - explodeProgress) * 0.06;
+  trayGroup.position.y = explodeProgress * 4;
+
+  updateCamera();
+  renderer.render(scene, camera);
+}
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  const w = container.clientWidth;
+  camera.aspect = w / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, height);
+});
+</script>
+
+</body>
+</html>
